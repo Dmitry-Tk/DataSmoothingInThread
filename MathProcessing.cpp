@@ -1,1 +1,0 @@
-/home/dmitry/Work/projects/Arxiv/MathProcessing.cpp
