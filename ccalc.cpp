@@ -17,6 +17,8 @@ CCalc::CCalc(QObject *parent) :  QObject(parent)
     Nblocks = 50;// число обрабатываемых блоков данных между перерисовкой
 //    CFilter filt(3, 35, 1, "", false);//13-  25- 27- 29- 31- 33- 35- 37
 //    filt.ShowFilterInfo();
+    filter.genNewFilter(3, 2*3+1, 3);
+    filter.showFilterInfo();
 }
 
 //
@@ -78,8 +80,6 @@ void CCalc::InitializeProcess()
     srand( static_cast<unsigned int>( time(nullptr) ) );
     // создаём фильтр и подготавливаем к работе
     // варианты: {2: 5..11}; {3: 5..11}; {4: 7..11}; {5: 7}
-    filter.genNewFilter(3, 2*3+1, 3);
-    filter.showFilterInfo();
     shift_t = filter.shift*dt;// коррекционный сдвиг фильтрованного сигнала
     filter.reset();// очистка очереди входных данных в фильтре
     qDebug()<<"the time shift between the filtered sample and current ones: shift_t ="<<shift_t;

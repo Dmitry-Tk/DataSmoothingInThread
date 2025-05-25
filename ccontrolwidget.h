@@ -24,6 +24,7 @@ public:
     QPushButton* btnSmoothData;
     QPushButton* btnResetChart;
     QPushButton* btnSetOriginalZoom;
+    QPushButton* btnSetFilterParams;
     QVector<QRadioButton*> radioBtns;
     QSpinBox* spinboxNblocks;
     QSpinBox* spinboxDelay;
@@ -46,6 +47,7 @@ public:
 public slots:
     void setSimulationMode();
     void setNoiseAmp(int);
+    void setFilterParams();
     void StartStopCalc();
     void onUpdatePlotter();
     void onProcessFinished();
@@ -63,6 +65,33 @@ public slots:
 
 signals:
     void SimulationModeChanged(int);
+};
+
+struct SFilterParams
+{
+    int n_poly;/**< порядок сглаживающего полинома */
+    int halfwidth;/**< полуширина фильтра в точках */
+    int cascades;/**< число каскадов */
+    QString m_name;/**< название фильтра */
+};
+///
+/// \brief The DefineFilterParamDialog class
+///
+class DefineFilterParamDialog : public QDialog
+{
+public:
+    explicit DefineFilterParamDialog(QWidget *parent = nullptr);
+    SFilterParams* getFilterParams() const;
+
+private:
+    QSpinBox* m_n_poly;
+    QSpinBox* m_halfwidth;
+    QSpinBox* m_cascades;
+    QString m_name;
+    static int n_poly;/**< порядок сглаживающего полинома */
+    static int halfwidth;/**< полуширина фильтра в точках */
+    static int cascades;/**< число каскадов */
+//    QString name;/**< название фильтра */
 };
 
 #endif // CCONTROLWIDGET_H

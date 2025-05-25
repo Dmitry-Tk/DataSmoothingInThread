@@ -4,13 +4,13 @@
 #include <QtCharts/QValueAxis>
 #include <QFileDialog>
 #include <QVector>
-//#include <../../Arxiv/MathProcessing.h>
-#include "MathProcessing.h"
+//#include <../../Arxiv/mathlib.h>
+#include "mathlib.h"
 
 
 using namespace QtCharts;
 
-static const QColor colorID[12] = { Qt::green, Qt::red, Qt::blue, Qt::magenta, Qt::cyan,
+static const QColor colorID[12] = { Qt::red, Qt::blue, Qt::green, Qt::magenta, Qt::cyan,
                                     Qt::yellow, Qt::darkGreen, Qt::darkRed, Qt::darkBlue,
                                     Qt::darkMagenta, Qt::darkCyan, Qt::darkYellow };
 
@@ -57,16 +57,20 @@ CControlWidget::CControlWidget(QWidget *parent) :  QWidget(parent)
     btnSmoothData = new QPushButton("Smooth Data");
     btnResetChart = new QPushButton("Reset Chart");
     btnSetOriginalZoom = new QPushButton("Original Zoom");
+    btnSetFilterParams = new QPushButton("Filter param-s");
     vbox3->addWidget(btnStartStop);
+    vbox3->addWidget(btnSetFilterParams);
     vbox3->addWidget(btnSmoothData);
     vbox3->addWidget(btnSetOriginalZoom);
-    vbox3->addWidget(btnResetChart);
+    vbox3->addWidget(btnResetChart);    
     //    groupBox3->setLayout(vbox3);
     btnStartStop->setFlat(true);
     btnStartStop->setCheckable(true);
     btnSmoothData->setFlat(true);
     btnSetOriginalZoom->setFlat(true);
     btnResetChart->setFlat(true);
+    btnSetFilterParams->setFlat(true);
+//    btnSetFilterParams->setFlat(true);
 
     sliderNoise = new QSlider;
     sliderNoise->setOrientation(Qt::Vertical);
@@ -111,6 +115,9 @@ CControlWidget::CControlWidget(QWidget *parent) :  QWidget(parent)
     connect( spinboxDelay, SIGNAL( valueChanged(int) ), &SmoothingObject, SLOT( setDelay(int) ), Qt::DirectConnection );
     /// установка Nblocks - обрабатываемое число блоков отсчётов перед прорисовкой графика
     connect( spinboxNblocks, SIGNAL( valueChanged(int) ), &SmoothingObject, SLOT( setNblocks(int) ), Qt::DirectConnection );
+    /// установка Nblocks - обрабатываемое число блоков отсчётов перед прорисовкой графика
+    connect( btnSetFilterParams, SIGNAL( clicked() ), this, SLOT( setFilterParams() ) );
+
     /// установка режима вычислений: default - smoothing; sync detect - синхронное детектирование
     for (int i=0; i<radioBtns.size(); i++)
         connect( radioBtns[i], SIGNAL(clicked()), this, SLOT(setSimulationMode()));
@@ -121,6 +128,7 @@ CControlWidget::CControlWidget(QWidget *parent) :  QWidget(parent)
     SmoothingObject.setNoiseAmp( sliderNoise->value() );
     SmoothingObject.setDelay( spinboxDelay->value() );
     SmoothingObject.setNblocks( spinboxNblocks->value() );
+    sliderNoise->setValue( 100 );
 }
 ///
 CControlWidget::~CControlWidget()
@@ -193,7 +201,10 @@ void CControlWidget::CreateSeries()
     chart->axisY()->setTitleText("Signals");
     chart->legend()->setAlignment( Qt::AlignRight );
     for (int i = 0; i < 3; i++)
+    {
         series[i]->setVisible( true );
+        series[i]->setPen( QPen(colorID[i], 3.0) );
+    }
 }
 // установка режима вычислений
 void CControlWidget::setSimulationMode()
@@ -209,6 +220,20 @@ void CControlWidget::setNoiseAmp(int NoiseAmp)
     sliderNoise->setToolTip( QString::number(0.1*NoiseAmp) + "%" );
 }
 
+///
+void CControlWidget::setFilterParams()
+{
+    DefineFilterParamDialog dialog(this);
+    if (dialog.exec() == QDialog::Rejected)
+        return;
+    SFilterParams* FilterParams = dialog.getFilterParams();
+    // создаём фильтр и подготавливаем к работе
+    // варианты: {2: 5..11}; {3: 5..11}; {4: 7..11}; {5: 7}
+    SmoothingObject.filter.genNewFilter(FilterParams->n_poly, 2*FilterParams->halfwidth+1, FilterParams->cascades);
+    SmoothingObject.filter.showFilterInfo();
+    SmoothingObject.shift_t = SmoothingObject.filter.shift*SmoothingObject.dt;// коррекционный сдвиг фильтрованного сигнала
+    SmoothingObject.filter.reset();// очистка очереди входных данных в фильтре
+}
 //
 void CControlWidget::ClearChart()
 {
@@ -500,4 +525,61 @@ void CControlWidget::SaveData(const QString& FullFileNameString, const std::vect
         file.close();
     }
 }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// \brief The DefineAbsorpParamDialog class
+///
+/// рабочие варианты: {2: 5..11}; {3: 5..11}; {4: 7..11}; {5: 7}
+int DefineFilterParamDialog::n_poly = 3;
+int DefineFilterParamDialog::halfwidth = 3;
+int DefineFilterParamDialog::cascades = 3;
+DefineFilterParamDialog::DefineFilterParamDialog(QWidget *parent)
+    : QDialog(parent),
+    m_n_poly( new QSpinBox ),
+    m_halfwidth( new QSpinBox ),
+    m_cascades( new QSpinBox )
+{
+    setWindowTitle(tr("Выбор параметров сглаживающего фильтра"));
+    setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+    setMinimumSize(400, 180);
+    setToolTip("рабочие варианты: {2: 5..11}; {3: 5..11}; {4: 7..11}; {5: 7}");
 
+    QGridLayout *layout = new QGridLayout(this);
+
+    layout->addWidget(new QLabel(tr("порядок полинома :")), 0, 0);
+    layout->addWidget(m_n_poly, 0, 1);
+    m_n_poly->setRange( 1, 7 );
+    m_n_poly->setValue( n_poly );
+    m_n_poly->setAlignment( Qt::AlignCenter );
+
+    layout->addWidget(new QLabel(tr("полуширина фильтра:")), 1, 0);
+    layout->addWidget( m_halfwidth, 1, 1);
+    m_halfwidth->setRange( 1, 9 );
+    m_halfwidth->setValue( halfwidth );
+    m_halfwidth->setAlignment( Qt::AlignCenter );
+
+    layout->addWidget(new QLabel(tr("число каскадов:")), 2, 0);
+    layout->addWidget( m_cascades, 2, 1);
+    m_cascades->setRange( 1, 5 );
+    m_cascades->setValue( cascades );
+    m_cascades->setAlignment( Qt::AlignCenter );
+
+    QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
+    layout->addWidget(buttonBox, 3, 0, 1, 2);
+}
+
+SFilterParams* DefineFilterParamDialog::getFilterParams() const
+{
+    SFilterParams* FilterParams = new SFilterParams;
+    FilterParams->n_poly = m_n_poly->value();
+    DefineFilterParamDialog::n_poly = FilterParams->n_poly;
+    FilterParams->halfwidth = m_halfwidth->value();
+    DefineFilterParamDialog::halfwidth = FilterParams->halfwidth;
+    FilterParams->cascades = m_cascades->value();
+    DefineFilterParamDialog::cascades = FilterParams->cascades;
+
+
+    return FilterParams;
+};

@@ -23,8 +23,8 @@ set(PROJECT_SOURCES
         ccontrolwidget.h
         cfilter.cpp
         cfilter.h
-        MathProcessing.cpp
-        MathProcessing.h
+        mathlib.cpp
+        mathlib.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
